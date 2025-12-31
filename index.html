@@ -3,32 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Empire City: Online Fixed</title>
+    <title>Empire City: Ultra Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background: #1b4d3e; touch-action: none; font-family: 'Arial Black', sans-serif; }
         canvas { display: block; }
-        
         #auth { position: fixed; inset: 0; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; color: white; }
-        #auth input { padding: 15px; font-size: 20px; border-radius: 8px; margin: 20px; text-align: center; border: none; outline: none; }
-        #auth button { padding: 15px 50px; background: #e74c3c; color: white; border: none; border-radius: 8px; font-size: 20px; font-weight: bold; }
+        #auth input { padding: 15px; font-size: 20px; border-radius: 10px; border: none; margin: 20px; text-align: center; }
+        #auth button { padding: 15px 50px; background: #e74c3c; color: white; border: none; border-radius: 10px; font-size: 20px; cursor: pointer; }
         
-        #chat-box { position: absolute; bottom: 160px; left: 20px; width: 250px; height: 120px; background: rgba(0,0,0,0.6); color: white; overflow-y: auto; font-size: 13px; padding: 10px; border-radius: 5px; pointer-events: none; display: none; border: 1px solid rgba(255,255,255,0.2); }
-        #chat-input-container { position: absolute; bottom: 110px; left: 20px; width: 250px; display: none; z-index: 100; }
-        #chat-input { width: 100%; padding: 10px; background: #222; border: 1px solid #fff; color: white; border-radius: 5px; font-size: 16px; }
+        #ui { position: absolute; top: 20px; right: 20px; color: #55ff55; text-shadow: 2px 2px #000; font-size: 18px; pointer-events: none; text-align: right; }
+        #chat-box { position: absolute; bottom: 120px; left: 20px; width: 250px; height: 120px; background: rgba(0,0,0,0.6); color: white; overflow-y: auto; font-size: 13px; padding: 10px; border-radius: 10px; pointer-events: none; border: 1px solid rgba(255,255,255,0.2); display: none; }
+        #chat-input-container { position: absolute; bottom: 80px; left: 20px; width: 250px; display: none; z-index: 110; }
+        #chat-input { width: 100%; padding: 12px; background: #222; border: 2px solid #fff; color: white; border-radius: 8px; font-size: 16px; }
         
-        #ui { position: absolute; top: 20px; left: 20px; color: #55ff55; font-size: 18px; pointer-events: none; z-index: 10; }
-        #joy-base { position: absolute; bottom: 30px; right: 30px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 2px solid #fff; }
-        #joy-stick { position: absolute; width: 40px; height: 40px; background: #fff; border-radius: 50%; left: 30px; top: 30px; pointer-events: none; }
-        #btn-chat { position: absolute; bottom: 30px; left: 20px; width: 60px; height: 60px; background: #e74c3c; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; z-index: 100; cursor: pointer; border: 2px solid #fff; }
+        #joy-base { position: absolute; bottom: 40px; left: 40px; width: 110px; height: 110px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 2px solid #fff; }
+        #joy-stick { position: absolute; width: 45px; height: 45px; background: #fff; border-radius: 50%; left: 32.5px; top: 32.5px; pointer-events: none; }
+        #btn-chat { position: absolute; bottom: 40px; right: 40px; width: 70px; height: 70px; background: #e74c3c; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 30px; z-index: 110; border: 3px solid #fff; }
     </style>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
 
 <div id="auth">
-    <h1 style="color:#e74c3c; letter-spacing: 2px;">CITY ONLINE</h1>
+    <h1 style="color:#e74c3c">CITY ONLINE</h1>
+    <p>Включи звук на телефоне!</p>
     <input type="text" id="nick" placeholder="ТВОЙ НИК" maxlength="10">
-    <button id="go">ИГРАТЬ</button>
+    <button id="go">ПОЕХАЛИ</button>
 </div>
 
 <div id="chat-box"></div>
@@ -42,66 +42,69 @@
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const socket = io("https://gta-servers.onrender.com"); // <-- Не забудь ссылку!
+const socket = io("https://gta-servers.onrender.com");
 
-// Единый спавн с небольшим разбросом (чтобы не застрять)
-let player = { 
-    name: "Player", 
-    x: 400 + (Math.random()*60 - 30), 
-    y: 400 + (Math.random()*60 - 30), 
-    angle: 0, speed: 0, color: '#ff3333' 
-};
-
+const GRID = 800, ROAD = 280;
+let player = { name: "Player", x: 400, y: 400, angle: 0, speed: 0, color: '#ff3333', drift: 0 };
 let gameActive = false, joy = { active: false, ang: 0, dist: 0 }, opponents = {};
 
-// Исправление работы кнопок через pointerdown
+// ЗВУКОВОЙ ДВИЖОК
+let audioCtx, osc, gainNode;
+function initAudio() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    osc = audioCtx.createOscillator();
+    gainNode = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    gainNode.gain.value = 0;
+    osc.start();
+}
+
 document.getElementById('go').addEventListener('pointerdown', () => {
-    const val = document.getElementById('nick').value;
-    player.name = val ? val.toUpperCase() : "RACER";
+    player.name = document.getElementById('nick').value.toUpperCase() || "RACER";
     document.getElementById('auth').style.display = 'none';
     document.getElementById('chat-box').style.display = 'block';
+    initAudio();
     gameActive = true;
 });
 
-const chatInput = document.getElementById('chat-input');
-const chatContainer = document.getElementById('chat-input-container');
-
+// ЧАТ
 document.getElementById('btn-chat').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    const isHidden = chatContainer.style.display === 'none' || chatContainer.style.display === '';
-    chatContainer.style.display = isHidden ? 'block' : 'none';
-    if(isHidden) chatInput.focus();
+    const cont = document.getElementById('chat-input-container');
+    cont.style.display = cont.style.display === 'none' ? 'block' : 'none';
+    if(cont.style.display === 'block') document.getElementById('chat-input').focus();
 });
 
-chatInput.onkeydown = (e) => {
-    if(e.key === 'Enter' && chatInput.value) {
-        socket.emit('chatMessage', { name: player.name, text: chatInput.value });
-        chatInput.value = '';
-        chatContainer.style.display = 'none';
+document.getElementById('chat-input').onkeydown = (e) => {
+    if(e.key === 'Enter' && e.target.value) {
+        socket.emit('chatMessage', { name: player.name, text: e.target.value });
+        e.target.value = '';
+        document.getElementById('chat-input-container').style.display = 'none';
     }
 };
 
-socket.on('chatMessage', (msg) => {
-    const div = document.createElement('div');
-    div.innerHTML = `<b>${msg.name}:</b> ${msg.text}`;
+socket.on('chatMessage', (m) => {
     const cb = document.getElementById('chat-box');
-    cb.appendChild(div);
+    cb.innerHTML += `<div><b>${m.name}:</b> ${m.text}</div>`;
     cb.scrollTop = cb.scrollHeight;
 });
 
-socket.on('opponents', (data) => { opponents = data; });
+socket.on('opponents', (d) => { opponents = d; });
 
-function drawCar(c, name) {
-    ctx.save();
-    ctx.translate(c.x, c.y); ctx.rotate(c.angle);
-    ctx.fillStyle = '#111'; ctx.fillRect(-25, -18, 12, 6); ctx.fillRect(13, -18, 12, 6);
-    ctx.fillStyle = c.color; ctx.fillRect(-35, -15, 70, 30);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(5, -12, 15, 24);
-    ctx.restore();
-    if(name) {
-        ctx.fillStyle = "white"; ctx.font = "bold 16px Arial"; ctx.textAlign = "center";
-        ctx.fillText(name, c.x, c.y - 45);
-    }
+function getHash(x, y) { return Math.abs(Math.sin(x * 12.9 + y * 78.2) * 43758); }
+
+function drawBuilding(gx, gy, x, y) {
+    const seed = getHash(x, y);
+    const bSize = GRID - ROAD - 60;
+    ctx.fillStyle = '#2c3e50'; ctx.fillRect(gx+30, gy+30, bSize, bSize);
+    ctx.fillStyle = '#34495e'; ctx.fillRect(gx+40, gy+40, bSize-20, bSize-20);
+    // Крыша детали
+    ctx.fillStyle = '#222'; ctx.fillRect(gx+GRID/4, gy+GRID/4, 40, 40);
+    // KFC вывеска
+    ctx.fillStyle = '#e74c3c'; ctx.font = "bold 25px Arial";
+    ctx.fillText("KFC", gx+50, gy+60);
 }
 
 function update() {
@@ -112,23 +115,40 @@ function update() {
         let diff = joy.ang - player.angle;
         while(diff < -Math.PI) diff += Math.PI*2;
         while(diff > Math.PI) diff -= Math.PI*2;
-        player.angle += diff * 0.1;
+        player.angle += diff * 0.08 * (Math.abs(player.speed)/6 + 0.1);
         player.speed += 0.25 * joy.dist;
     }
-    player.speed *= 0.95;
+    player.speed *= 0.96;
     player.x += Math.cos(player.angle) * player.speed;
     player.y += Math.sin(player.angle) * player.speed;
+
+    // Звук мотора
+    if(audioCtx) {
+        osc.frequency.setTargetAtTime(40 + Math.abs(player.speed) * 15, audioCtx.currentTime, 0.1);
+        gainNode.gain.setTargetAtTime(gameActive ? 0.1 : 0, audioCtx.currentTime, 0.1);
+    }
 
     socket.emit('update', { x: player.x, y: player.y, angle: player.angle, name: player.name, color: player.color });
 
     ctx.clearRect(0,0,canvas.width, canvas.height);
     ctx.save();
     ctx.translate(canvas.width/2, canvas.height/2);
-    ctx.scale(0.6, 0.6);
+    ctx.scale(0.5, 0.5);
     ctx.translate(-player.x, -player.y);
 
-    // Дорога для ориентира (центральная)
-    ctx.fillStyle = '#2c3e50'; ctx.fillRect(-2000, 300, 5000, 200);
+    const sX = Math.floor((player.x - 2000)/GRID), eX = Math.ceil((player.x + 2000)/GRID);
+    const sY = Math.floor((player.y - 2000)/GRID), eY = Math.ceil((player.y + 2000)/GRID);
+
+    for(let x=sX; x<=eX; x++) {
+        for(let y=sY; y<=eY; y++) {
+            const gx = x*GRID, gy = y*GRID;
+            ctx.fillStyle = '#1b4d3e'; ctx.fillRect(gx, gy, GRID, GRID); // Трава
+            ctx.fillStyle = '#333'; 
+            ctx.fillRect(gx + GRID-ROAD, gy, ROAD, GRID); // Дороги
+            ctx.fillRect(gx, gy + GRID-ROAD, GRID, ROAD);
+            drawBuilding(gx, gy, x, y);
+        }
+    }
 
     for(let id in opponents) if(id !== socket.id) drawCar(opponents[id], opponents[id].name);
     drawCar(player, player.name);
@@ -138,12 +158,26 @@ function update() {
     requestAnimationFrame(update);
 }
 
+function drawCar(c, name) {
+    ctx.save();
+    ctx.translate(c.x, c.y); ctx.rotate(c.angle);
+    ctx.fillStyle = '#000'; ctx.fillRect(-25, -18, 12, 6); ctx.fillRect(13, -18, 12, 6);
+    ctx.fillStyle = c.color; ctx.fillRect(-35, -15, 70, 30);
+    ctx.fillStyle = '#fff'; ctx.fillRect(25, -12, 5, 5); ctx.fillRect(25, 7, 5, 5);
+    ctx.restore();
+    if(name) {
+        ctx.fillStyle = "white"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center";
+        ctx.fillText(name, c.x, c.y - 50);
+    }
+}
+
+// ДЖОЙСТИК СЛЕВА
 const stick = document.getElementById('joy-stick'), base = document.getElementById('joy-base');
 function handleMove(e) {
     if(!gameActive) return;
     const t = e.touches ? e.touches[0] : e;
     const r = base.getBoundingClientRect();
-    const dx = t.clientX - (r.left + 50), dy = t.clientY - (r.top + 50);
+    const dx = t.clientX - (r.left + 55), dy = t.clientY - (r.top + 55);
     const d = Math.min(Math.hypot(dx, dy), 40);
     joy.ang = Math.atan2(dy, dx); joy.dist = d/40; joy.active = true;
     stick.style.transform = `translate(${Math.cos(joy.ang)*d}px, ${Math.sin(joy.ang)*d}px)`;
