@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Empire City: Online Ultra</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; touch-action: none; font-family: 'Arial Black', sans-serif; }
+        canvas { display: block; }
+        #auth { position: fixed; inset: 0; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; color: white; }
+        #auth input { padding: 15px; font-size: 20px; border-radius: 8px; border: none; margin: 20px; text-align: center; }
+        #auth button { padding: 15px 50px; background: #e74c3c; color: white; border: none; border-radius: 8px; font-size: 20px; }
+        #ui { position: absolute; top: 20px; left: 20px; color: #55ff55; text-shadow: 2px 2px #000; font-size: 18px; pointer-events: none; }
+        #radar-box { position: absolute; top: 15px; right: 15px; width: 110px; height: 110px; border-radius: 50%; border: 3px solid #555; overflow: hidden; background: #000; }
+        #joy-base { position: absolute; bottom: 40px; left: 40px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 2px solid #fff; }
+        #joy-stick { position: absolute; width: 40px; height: 40px; background: #fff; border-radius: 50%; left: 30px; top: 30px; }
+    </style>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+<div id="auth">
+    <h1 style="color:#e74c3c">CITY ONLINE</h1>
+    <input type="text" id="nick" placeholder="ТВОЙ НИК" maxlength="10">
+    <button id="go">ПОЕХАЛИ</button>
+</div>
+
+<div id="ui">CASH: $12,500,000<br><span id="sp">0 MPH</span></div>
+<div id="radar-box"><canvas id="radar" width="110" height="110"></canvas></div>
+<div id="joy-base"><div id="joy-stick"></div></div>
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const rctx = document.getElementById('radar').getContext('2d');
+
+const GRID = 800, ROAD = 280;
+let player = { name: "Player", x: 400, y: 400, angle: 0, speed: 0, w: 70, h: 35, color: '#ff3333', drift: 0 };
+let gameActive = false, joy = { active: false, ang: 0, dist: 0 };
+let particles = [], opponents = {};
+
+// --- МУЛЬТИПЛЕЕР (ЗАГЛУШКА) ---
+// Замени URL ниже на ссылку от своего сервера после шага 2
+const socket = io("https://your-server-name.onrender.com"); 
+
+document.getElementById('go').onclick = () => {
+    player.name = document.getElementById('nick').value || "RACER";
+    document.getElementById('auth').style.display = 'none';
+    gameActive = true;
+};
+
+socket.on('opponents', (data) => { opponents = data; });
+
+function createFX(x, y, color, size) {
+    particles.push({ x, y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: 1, color, size });
+}
+
+function drawCar(c, name) {
+    ctx.save();
+    ctx.translate(c.x, c.y); ctx.rotate(c.angle + (c.drift || 0)*0.06);
+    // Детализация
+    ctx.fillStyle = '#111'; ctx.fillRect(-25, -18, 12, 6); ctx.fillRect(13, -18, 12, 6); // Колеса
+    ctx.fillStyle = c.color; ctx.fillRect(-35, -15, 70, 30); // Кузов
+    ctx.fillStyle = '#222'; ctx.fillRect(5, -12, 15, 24); // Стекло
+    ctx.fillStyle = '#fff'; ctx.fillRect(30, -12, 5, 6); ctx.fillRect(30, 6, 5, 6); // Фары
+    ctx.restore();
+    if(name) {
+        ctx.fillStyle = "white"; ctx.font = "16px Arial"; ctx.textAlign = "center";
+        ctx.fillText(name, c.x, c.y - 45);
+    }
+}
+
+function update() {
+    if(!gameActive) { requestAnimationFrame(update); return; }
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+    if(joy.active) {
+        let diff = joy.ang - player.angle;
+        while(diff < -Math.PI) diff += Math.PI*2;
+        while(diff > Math.PI) diff -= Math.PI*2;
+        player.angle += diff * 0.08 * (Math.abs(player.speed)/6 + 0.1);
+        player.speed += 0.25 * joy.dist;
+    }
+    player.speed *= 0.96;
+    player.drift = player.speed * 1.5;
+    player.x += Math.cos(player.angle) * player.speed;
+    player.y += Math.sin(player.angle) * player.speed;
+
+    // Отправка данных на сервер
+    socket.emit('update', { x: player.x, y: player.y, angle: player.angle, name: player.name, color: player.color });
+
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width/2, canvas.height/2);
+    ctx.scale(0.5, 0.5);
+    ctx.translate(-player.x, -player.y);
+
+    // Мир
+    const sX = Math.floor((player.x - 2000)/GRID), eX = Math.ceil((player.x + 2000)/GRID);
+    const sY = Math.floor((player.y - 2000)/GRID), eY = Math.ceil((player.y + 2000)/GRID);
+
+    for(let x=sX; x<=eX; x++) {
+        for(let y=sY; y<=eY; y++) {
+            const gx = x*GRID, gy = y*GRID;
+            ctx.fillStyle = '#1b4d3e'; ctx.fillRect(gx, gy, GRID, GRID);
+            ctx.fillStyle = '#2c3e50'; 
+            ctx.fillRect(gx + GRID-ROAD, gy, ROAD, GRID);
+            ctx.fillRect(gx, gy + GRID-ROAD, GRID, ROAD);
+            
+            // Здания и вывески
+            ctx.fillStyle = '#34495e'; ctx.fillRect(gx+40, gy+40, 200, 200);
+            ctx.fillStyle = '#fff'; ctx.font = "20px Arial";
+            if(x%2==0) ctx.fillText("KFC", gx+50, gy+35);
+        }
+    }
+
+    // Отрисовка игроков
+    drawCar(player, player.name);
+    for(let id in opponents) if(id !== socket.id) drawCar(opponents[id], opponents[id].name);
+
+    ctx.restore();
+
+    // Радар
+    rctx.fillStyle = '#000'; rctx.fillRect(0,0,110,110);
+    rctx.save();
+    rctx.translate(55, 55); rctx.rotate(-player.angle - Math.PI/2);
+    rctx.scale(0.03, 0.03); rctx.translate(-player.x, -player.y);
+    rctx.fillStyle = '#444'; rctx.fillRect(player.x-1000, Math.floor(player.y/GRID)*GRID + GRID-ROAD, 2000, ROAD);
+    rctx.restore();
+    rctx.fillStyle = '#fff'; rctx.beginPath(); rctx.arc(55,55,3,0,7); rctx.fill();
+
+    document.getElementById('sp').innerText = Math.round(player.speed*12) + " MPH";
+    requestAnimationFrame(update);
+}
+
+// Управление (Джойстик)
+const stick = document.getElementById('joy-stick'), base = document.getElementById('joy-base');
+function handleMove(e) {
+    e.preventDefault(); const t = e.touches ? e.touches[0] : e; const r = base.getBoundingClientRect();
+    const dx = t.clientX - (r.left + 50), dy = t.clientY - (r.top + 50);
+    const d = Math.min(Math.hypot(dx, dy), 40);
+    joy.ang = Math.atan2(dy, dx); joy.dist = d/40; joy.active = true;
+    stick.style.transform = `translate(${Math.cos(joy.ang)*d}px, ${Math.sin(joy.ang)*d}px)`;
+}
+window.addEventListener('touchstart', handleMove, {passive: false});
+window.addEventListener('touchmove', handleMove, {passive: false});
+window.addEventListener('touchend', () => { joy.active = false; stick.style.transform = 'none'; });
+
+update();
+</script>
+</body>
+</html>
