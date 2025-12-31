@@ -3,39 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Empire City: Ultra Edition</title>
+    <title>Empire City: Next-Gen</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #1b4d3e; touch-action: none; font-family: 'Arial Black', sans-serif; }
+        body { margin: 0; overflow: hidden; background: #1b4d3e; touch-action: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
         canvas { display: block; }
-        #auth { position: fixed; inset: 0; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; color: white; }
-        #auth input { padding: 15px; font-size: 20px; border-radius: 10px; border: none; margin: 20px; text-align: center; }
-        #auth button { padding: 15px 50px; background: #e74c3c; color: white; border: none; border-radius: 10px; font-size: 20px; cursor: pointer; }
         
-        #ui { position: absolute; top: 20px; right: 20px; color: #55ff55; text-shadow: 2px 2px #000; font-size: 18px; pointer-events: none; text-align: right; }
-        #chat-box { position: absolute; bottom: 120px; left: 20px; width: 250px; height: 120px; background: rgba(0,0,0,0.6); color: white; overflow-y: auto; font-size: 13px; padding: 10px; border-radius: 10px; pointer-events: none; border: 1px solid rgba(255,255,255,0.2); display: none; }
-        #chat-input-container { position: absolute; bottom: 80px; left: 20px; width: 250px; display: none; z-index: 110; }
-        #chat-input { width: 100%; padding: 12px; background: #222; border: 2px solid #fff; color: white; border-radius: 8px; font-size: 16px; }
-        
-        #joy-base { position: absolute; bottom: 40px; left: 40px; width: 110px; height: 110px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 2px solid #fff; }
-        #joy-stick { position: absolute; width: 45px; height: 45px; background: #fff; border-radius: 50%; left: 32.5px; top: 32.5px; pointer-events: none; }
-        #btn-chat { position: absolute; bottom: 40px; right: 40px; width: 70px; height: 70px; background: #e74c3c; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 30px; z-index: 110; border: 3px solid #fff; }
+        /* Экран входа */
+        #auth { position: fixed; inset: 0; background: radial-gradient(circle, #2c3e50, #000); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; color: white; }
+        #auth h1 { font-size: 40px; margin-bottom: 10px; text-shadow: 0 0 20px #e74c3c; color: #e74c3c; }
+        #auth input { padding: 15px; font-size: 18px; border-radius: 30px; border: 2px solid #e74c3c; background: rgba(0,0,0,0.5); color: white; text-align: center; width: 200px; outline: none; }
+        #auth button { margin-top: 20px; padding: 15px 60px; background: #e74c3c; color: white; border: none; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4); }
+
+        /* Чат */
+        #chat-ui { position: absolute; bottom: 120px; left: 20px; width: 280px; z-index: 200; pointer-events: none; }
+        #chat-messages { height: 120px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px; margin-bottom: 5px; display: none; }
+        #chat-messages div { margin-bottom: 4px; color: #fff; font-size: 13px; text-shadow: 1px 1px #000; }
+        #chat-input-container { display: none; pointer-events: auto; }
+        #chat-input { width: 100%; padding: 12px; border-radius: 20px; border: 2px solid #fff; background: rgba(0,0,0,0.8); color: white; font-size: 16px; outline: none; }
+
+        /* Интерфейс */
+        #ui { position: absolute; top: 20px; right: 20px; color: #55ff55; font-weight: bold; font-size: 20px; text-shadow: 2px 2px #000; text-align: right; pointer-events: none; }
+        #joy-base { position: absolute; bottom: 40px; left: 40px; width: 110px; height: 110px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 3px solid rgba(255,255,255,0.5); backdrop-filter: blur(5px); }
+        #joy-stick { position: absolute; width: 50px; height: 50px; background: #fff; border-radius: 50%; left: 30px; top: 30px; box-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        #btn-chat-toggle { position: absolute; bottom: 40px; right: 40px; width: 70px; height: 70px; background: #e74c3c; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; color: white; z-index: 210; border: 3px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.3); pointer-events: auto; }
     </style>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
 
 <div id="auth">
-    <h1 style="color:#e74c3c">CITY ONLINE</h1>
-    <p>Включи звук на телефоне!</p>
-    <input type="text" id="nick" placeholder="ТВОЙ НИК" maxlength="10">
-    <button id="go">ПОЕХАЛИ</button>
+    <h1>CITY NEXT-GEN</h1>
+    <input type="text" id="nick" placeholder="НИКНЕЙМ" maxlength="12">
+    <button id="go">В ГОРОД</button>
 </div>
 
-<div id="chat-box"></div>
-<div id="chat-input-container"><input type="text" id="chat-input" placeholder="Сообщение..."></div>
-<div id="btn-chat">💬</div>
+<div id="ui">$12,500,000<br><span id="speed" style="font-size: 14px; color: white;">0 MPH</span></div>
 
-<div id="ui">CASH: $12,500,000<br><span id="sp">0 MPH</span></div>
+<div id="chat-ui">
+    <div id="chat-messages"></div>
+    <div id="chat-input-container">
+        <input type="text" id="chat-input" placeholder="Напиши что-нибудь...">
+    </div>
+</div>
+<div id="btn-chat-toggle">💬</div>
+
 <div id="joy-base"><div id="joy-stick"></div></div>
 <canvas id="game"></canvas>
 
@@ -44,67 +55,114 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const socket = io("https://gta-servers.onrender.com");
 
-const GRID = 800, ROAD = 280;
-let player = { name: "Player", x: 400, y: 400, angle: 0, speed: 0, color: '#ff3333', drift: 0 };
-let gameActive = false, joy = { active: false, ang: 0, dist: 0 }, opponents = {};
+const GRID = 1000, ROAD = 350;
+let player = { name: "Player", x: 500, y: 500, angle: 0, speed: 0, color: '#ff3333', particles: [] };
+let opponents = {}, gameActive = false, joy = { active: false, ang: 0, dist: 0 };
 
-// ЗВУКОВОЙ ДВИЖОК
-let audioCtx, osc, gainNode;
-function initAudio() {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    osc = audioCtx.createOscillator();
-    gainNode = audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    gainNode.gain.value = 0;
-    osc.start();
-}
-
+// Запуск игры
 document.getElementById('go').addEventListener('pointerdown', () => {
     player.name = document.getElementById('nick').value.toUpperCase() || "RACER";
     document.getElementById('auth').style.display = 'none';
-    document.getElementById('chat-box').style.display = 'block';
-    initAudio();
+    document.getElementById('chat-messages').style.display = 'block';
     gameActive = true;
 });
 
-// ЧАТ
-document.getElementById('btn-chat').addEventListener('pointerdown', (e) => {
+// Чат
+const btnChat = document.getElementById('btn-chat-toggle');
+const inputCont = document.getElementById('chat-input-container');
+const chatInp = document.getElementById('chat-input');
+
+btnChat.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    const cont = document.getElementById('chat-input-container');
-    cont.style.display = cont.style.display === 'none' ? 'block' : 'none';
-    if(cont.style.display === 'block') document.getElementById('chat-input').focus();
+    const isVisible = inputCont.style.display === 'block';
+    inputCont.style.display = isVisible ? 'none' : 'block';
+    if (!isVisible) chatInp.focus();
 });
 
-document.getElementById('chat-input').onkeydown = (e) => {
-    if(e.key === 'Enter' && e.target.value) {
-        socket.emit('chatMessage', { name: player.name, text: e.target.value });
-        e.target.value = '';
-        document.getElementById('chat-input-container').style.display = 'none';
+chatInp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && chatInp.value.trim()) {
+        socket.emit('chatMessage', { name: player.name, text: chatInp.value });
+        chatInp.value = '';
+        inputCont.style.display = 'none';
     }
-};
+});
 
 socket.on('chatMessage', (m) => {
-    const cb = document.getElementById('chat-box');
-    cb.innerHTML += `<div><b>${m.name}:</b> ${m.text}</div>`;
-    cb.scrollTop = cb.scrollHeight;
+    const msgs = document.getElementById('chat-messages');
+    msgs.innerHTML += `<div><b>${m.name}:</b> ${m.text}</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
 });
 
 socket.on('opponents', (d) => { opponents = d; });
 
-function getHash(x, y) { return Math.abs(Math.sin(x * 12.9 + y * 78.2) * 43758); }
+function drawCar(c, isPlayer) {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(c.angle);
+    
+    // Тень
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(-35, -15, 80, 40);
 
-function drawBuilding(gx, gy, x, y) {
-    const seed = getHash(x, y);
-    const bSize = GRID - ROAD - 60;
-    ctx.fillStyle = '#2c3e50'; ctx.fillRect(gx+30, gy+30, bSize, bSize);
-    ctx.fillStyle = '#34495e'; ctx.fillRect(gx+40, gy+40, bSize-20, bSize-20);
-    // Крыша детали
-    ctx.fillStyle = '#222'; ctx.fillRect(gx+GRID/4, gy+GRID/4, 40, 40);
-    // KFC вывеска
-    ctx.fillStyle = '#e74c3c'; ctx.font = "bold 25px Arial";
-    ctx.fillText("KFC", gx+50, gy+60);
+    // Кузов
+    ctx.fillStyle = c.color;
+    ctx.beginPath();
+    ctx.roundRect(-40, -20, 80, 40, 5);
+    ctx.fill();
+
+    // Стекло
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-10, -16, 25, 32);
+
+    // Фары
+    ctx.fillStyle = '#ffffaa';
+    ctx.fillRect(32, -18, 8, 6);
+    ctx.fillRect(32, 12, 8, 6);
+
+    ctx.restore();
+    
+    // Ник
+    ctx.fillStyle = "white";
+    ctx.font = "bold 20px Arial";
+    ctx.textAlign = "center";
+    ctx.shadowBlur = 4; ctx.shadowColor = "black";
+    ctx.fillText(c.name, c.x, c.y - 50);
+    ctx.shadowBlur = 0;
+}
+
+function drawCity() {
+    const sX = Math.floor((player.x - 2000)/GRID), eX = Math.ceil((player.x + 2000)/GRID);
+    const sY = Math.floor((player.y - 2000)/GRID), eY = Math.ceil((player.y + 2000)/GRID);
+
+    for(let x=sX; x<=eX; x++) {
+        for(let y=sY; y<=eY; y++) {
+            const gx = x*GRID, gy = y*GRID;
+            // Трава
+            ctx.fillStyle = '#1b4d3e'; ctx.fillRect(gx, gy, GRID, GRID);
+            
+            // Дороги с разметкой
+            ctx.fillStyle = '#333';
+            ctx.fillRect(gx + GRID-ROAD, gy, ROAD, GRID);
+            ctx.fillRect(gx, gy + GRID-ROAD, GRID, ROAD);
+            
+            // Разметка
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(gx + GRID-ROAD/2-2, gy, 4, GRID);
+            ctx.fillRect(gx, gy + GRID-ROAD/2-2, GRID, 4);
+
+            // "3D" Здания
+            const bx = gx + 50, by = gy + 50, bSize = GRID-ROAD-100;
+            // Стены
+            ctx.fillStyle = '#1a252f'; 
+            ctx.fillRect(bx, by, bSize, bSize);
+            // Крыша
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(bx+10, by+10, bSize-20, bSize-20);
+            // KFC Лого
+            ctx.fillStyle = '#e74c3c'; ctx.font = "bold 30px Arial";
+            ctx.fillText("KFC", bx+40, by+70);
+        }
+    }
 }
 
 function update() {
@@ -115,63 +173,39 @@ function update() {
         let diff = joy.ang - player.angle;
         while(diff < -Math.PI) diff += Math.PI*2;
         while(diff > Math.PI) diff -= Math.PI*2;
-        player.angle += diff * 0.08 * (Math.abs(player.speed)/6 + 0.1);
-        player.speed += 0.25 * joy.dist;
+        player.angle += diff * 0.1;
+        player.speed += 0.3 * joy.dist;
     }
-    player.speed *= 0.96;
+    player.speed *= 0.95;
     player.x += Math.cos(player.angle) * player.speed;
     player.y += Math.sin(player.angle) * player.speed;
-
-    // Звук мотора
-    if(audioCtx) {
-        osc.frequency.setTargetAtTime(40 + Math.abs(player.speed) * 15, audioCtx.currentTime, 0.1);
-        gainNode.gain.setTargetAtTime(gameActive ? 0.1 : 0, audioCtx.currentTime, 0.1);
-    }
 
     socket.emit('update', { x: player.x, y: player.y, angle: player.angle, name: player.name, color: player.color });
 
     ctx.clearRect(0,0,canvas.width, canvas.height);
+    
+    // Эффект тряски на скорости
     ctx.save();
+    if(player.speed > 5) {
+        ctx.translate((Math.random()-0.5)*player.speed, (Math.random()-0.5)*player.speed);
+    }
+    
     ctx.translate(canvas.width/2, canvas.height/2);
     ctx.scale(0.5, 0.5);
     ctx.translate(-player.x, -player.y);
 
-    const sX = Math.floor((player.x - 2000)/GRID), eX = Math.ceil((player.x + 2000)/GRID);
-    const sY = Math.floor((player.y - 2000)/GRID), eY = Math.ceil((player.y + 2000)/GRID);
+    drawCity();
 
-    for(let x=sX; x<=eX; x++) {
-        for(let y=sY; y<=eY; y++) {
-            const gx = x*GRID, gy = y*GRID;
-            ctx.fillStyle = '#1b4d3e'; ctx.fillRect(gx, gy, GRID, GRID); // Трава
-            ctx.fillStyle = '#333'; 
-            ctx.fillRect(gx + GRID-ROAD, gy, ROAD, GRID); // Дороги
-            ctx.fillRect(gx, gy + GRID-ROAD, GRID, ROAD);
-            drawBuilding(gx, gy, x, y);
-        }
-    }
-
-    for(let id in opponents) if(id !== socket.id) drawCar(opponents[id], opponents[id].name);
-    drawCar(player, player.name);
+    for(let id in opponents) if(id !== socket.id) drawCar(opponents[id], false);
+    drawCar(player, true);
 
     ctx.restore();
-    document.getElementById('sp').innerText = Math.round(player.speed*12) + " MPH";
+
+    document.getElementById('speed').innerText = Math.round(player.speed*15) + " KM/H";
     requestAnimationFrame(update);
 }
 
-function drawCar(c, name) {
-    ctx.save();
-    ctx.translate(c.x, c.y); ctx.rotate(c.angle);
-    ctx.fillStyle = '#000'; ctx.fillRect(-25, -18, 12, 6); ctx.fillRect(13, -18, 12, 6);
-    ctx.fillStyle = c.color; ctx.fillRect(-35, -15, 70, 30);
-    ctx.fillStyle = '#fff'; ctx.fillRect(25, -12, 5, 5); ctx.fillRect(25, 7, 5, 5);
-    ctx.restore();
-    if(name) {
-        ctx.fillStyle = "white"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center";
-        ctx.fillText(name, c.x, c.y - 50);
-    }
-}
-
-// ДЖОЙСТИК СЛЕВА
+// Джойстик слева
 const stick = document.getElementById('joy-stick'), base = document.getElementById('joy-base');
 function handleMove(e) {
     if(!gameActive) return;
